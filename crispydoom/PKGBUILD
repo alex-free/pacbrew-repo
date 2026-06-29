@@ -1,0 +1,51 @@
+pkgname=ps5-payload-crispy-doom
+pkgver=7.1.0
+pkgrel=1
+pkgdesc="Crispy Doom is a limit-removing enhanced-resolution Doom source port based on Chocolate Doom."
+arch=('any')
+license=('GPL')
+url="https://fabiangreffrath.github.io/crispy-homepage"
+source=("git+https://github.com/fabiangreffrath/crispy-doom.git#commit=0a022e0ee6c74d9bab173ed9ee5212312e90ce3a")
+sha256sums=('SKIP')
+options=(!strip libtool staticlibs)
+groups=('ps5-payload-dev' 'ps5-payload-game')
+makedepends=('ps5-payload-sdk')
+depends=('ps5-payload-flac' 'ps5-payload-libminizip' 
+    'ps5-payload-sdl2' 'ps5-payload-sdl2_net' 
+    'ps5-payload-libvorbis' 'ps5-payload-libmad' 
+    'ps5-payload-sdl2_mixer' 'ps5-payload-libpng')
+
+prepare() {
+    if [ -z "${PS5_PAYLOAD_SDK}" ]; then
+	export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
+    fi
+
+    cd "${srcdir}/crispy-doom"
+    git submodule update --init --recursive
+
+}
+
+build() {
+    source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh"
+    cd "${srcdir}/crispy-doom"
+
+    export PKG_CONFIG_SYSROOT_DIR=${PS5_PAYLOAD_SDK}/target
+    export PKG_CONFIG_LIBDIR=${PKG_CONFIG_SYSROOT_DIR}/user/homebrew/lib/pkgconfig
+    export PKG_CONFIG_PATH=${PKG_CONFIG_SYSROOT_DIR}/user/homebrew/libdata/pkgconfig
+
+    ./autogen.sh --prefix="${PREFIX}" --host=x86_64-pc-freebsd \
+        --disable-doc \
+        --disable-zpool \
+        --disable-bash-completion \
+        --disable-icons
+    ${MAKE}
+}
+
+
+package() {
+    source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh"
+    cd "${srcdir}/crispy-doom"
+
+    export DESTDIR="${pkgdir}/${DESTDIR}"
+    ${MAKE} install
+}
