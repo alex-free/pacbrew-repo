@@ -1,0 +1,53 @@
+pkgname=ps5-payload-wolf4sdl
+pkgver=5e63997
+pkgrel=1
+pkgdesc="Open-source port of id Software's classic first-person shooter Wolfenstein 3D."
+arch=('any')
+license=('GPL')
+url="https://github.com/alex-free/wolf4sdl"
+source=("git+https://github.com/alex-free/wolf4sdl.git#commit=5e639973a665443053c58a0498b68f487537ec80")
+sha256sums=('SKIP')
+options=(!strip libtool staticlibs)
+groups=('ps5-payload-dev' 'ps5-payload-game')
+makedepends=('ps5-payload-sdk')
+depends=('ps5-payload-flac' 'ps5-payload-libminizip' 
+    'ps5-payload-sdl2' 'ps5-payload-sdl2_net' 
+    'ps5-payload-libvorbis' 'ps5-payload-libmad' 
+    'ps5-payload-sdl2_mixer' 'ps5-payload-libpng')
+
+prepare() {
+    if [ -z "${PS5_PAYLOAD_SDK}" ]; then
+	export PS5_PAYLOAD_SDK=/opt/ps5-payload-sdk
+    fi
+
+    cd "${srcdir}/wolf4sdl"
+    git submodule update --init --recursive
+}
+
+build() {
+    source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh"
+    export PREFIX="${pkgdir}/${PS5_PAYLOAD_SDK}/target/${PS5_HBROOT}"
+    export SDL_CONFIG="${PS5_PAYLOAD_SDK}"/bin/prospero-sdl2-config
+    export CFLAGS="-Wno-c++11-narrowing" 
+
+    # We need to build 2 executables, one for shareware v1.4 (latest) and another for retail v1.4 (GOG release extracted assets work).
+    # Retail v1.4 is defined by default.
+    cp -r "${srcdir}/wolf4sdl" "${srcdir}/wolf4sdl-shareware"
+    sed -i -e 's|//#define UPLOAD|#define UPLOAD|' \
+        -e 's|#define GOODTIMES|//#define GOODTIMES|' "${srcdir}/wolf4sdl-shareware"/version.h
+
+    cd "${srcdir}/wolf4sdl-shareware"
+    ${MAKE}
+
+    cd ../wolf4sdl
+    ${MAKE}
+}
+
+
+package() {
+    source "${PS5_PAYLOAD_SDK}/toolchain/prospero.sh"
+
+    mkdir -p ${pkgdir}/${PS5_PAYLOAD_SDK}/target/${PS5_HBROOT}/bin
+    cp -v ${srcdir}/wolf4sdl-shareware/wolf3d ${pkgdir}/${PS5_PAYLOAD_SDK}/target/${PS5_HBROOT}/bin/wolf3d-shareware
+    cp -v ${srcdir}/wolf4sdl/wolf3d ${pkgdir}/${PS5_PAYLOAD_SDK}/target/${PS5_HBROOT}/bin/wolf3d-registered
+}
